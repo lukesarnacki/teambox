@@ -1,0 +1,31 @@
+- if can? :upload_files, @current_project
+  .text_actions
+    = link_to content_tag(:span, t('.new_file')), new_project_synced_file_path(@current_project), :class => 'add_button', :id => 'upload_file_button'
+
+%h2= t('.title', :project => @current_project)
+
+- if @folders.any?
+  %p.breadcrumbs
+    %b Folder:
+    = @folders.join(" &rarr; ").html_safe
+
+.new_file
+  - if can? :upload_files, @current_project
+    = render :partial => 'form'
+  - else
+    %p= t('.cant_create')
+
+.uploads
+  = render :partial => 'parent_link'
+  
+  - @files.each_with_index do |file, index|
+    = render :partial => 'file', :locals => { :file => file, :index => index }
+
+.access
+  %p
+    These files are synchronized with your computer.
+    /= link_to "Learn more about file sharing with Teambox.", setup_files_path
+  %p
+    These files can be accessed by members of the #{@organization} organization: #{to_sentence(@organization.users)}.
+  %p
+    To add or revoke access, visit the #{link_to "organization's people page",  organization_memberships_path(@organization) }.

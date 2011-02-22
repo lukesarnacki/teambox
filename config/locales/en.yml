@@ -1147,6 +1147,16 @@ en:
     errors:
       exceeded_storage_plan_limit: "You have exceeded your storage quota for %{organization_name}. To increase your storage limits, <a href='%{url}'>upgrade your plan now</a>."
       general:  "There was an error uploading the file"
+  synced_files:
+    index:
+      title: Syncronized Files in %{project}
+      new_file: New File
+    file:
+      open: Open
+      download: Download
+      download_compressed: Zipped
+      delete: Delete
+      delete_confirmation: Are you sure you wish to delete this file? It will be deleted from all computers that sync this folder.
   sessions:
     fields:
       username_or_email: Email or Username
@@ -1208,6 +1218,7 @@ en:
       time: Time tracking
       pages: Pages
       files: Files
+      nomadesk_files: Synced Files
       settings: Settings
       people: "People & Permissions"
       my_tasks: My Tasks

@@ -126,8 +126,20 @@ class Nomadesk
       @provider.download_url(@bucket, self.full_path)
     end
     
+    def download_compressed_url
+      @provider.download_compressed_url(@bucket, self.full_path)
+    end
+    
+    def delete_url
+      @provider.delete_url(@bucket, self.full_path)
+    end
+    
     def self.list_from_hash(provider, bucket, hash_list)
       hash_list.map{|h| self.from_hash(provider, bucket, h) }
+    end
+    
+    def to_param
+      self.full_path
     end
     
     def self.from_hash(provider, bucket, hash)
@@ -183,7 +195,23 @@ class Nomadesk
   def download_url(bucket, path)
     raise ArgumentError.new("Bucket must be an instance of Bucket") unless bucket.is_a?(Bucket)
     
-    res = task_url('FileDownload', :url => bucket.api_url, :params => {"FileserverName" => bucket.name, "Path" => path})
+    task_url('FileDownload', :url => bucket.api_url, :params => {"FileserverName" => bucket.name, "Path" => path})
+  end
+  
+  def download_compressed_url(bucket, path)
+    raise ArgumentError.new("Bucket must be an instance of Bucket") unless bucket.is_a?(Bucket)
+    
+    task_url('DownloadAsZip', :url => bucket.api_url, :params => {"FileserverName" => bucket.name, "Path" => path})
+  end
+  
+  def file_upload_url(bucket, path)
+    raise ArgumentError.new("Bucket must be an instance of Bucket") unless bucket.is_a?(Bucket)
+    
+    task_url('FileUpload', :url => bucket.api_url, :params => {"FileserverName" => bucket.name, "Path" => path})
+  end
+  
+  def delete_url(bucket, path)
+    res = task_url('rm', :url => bucket.api_url, :params => {"FileserverName" => bucket.name, "Path" => path})
   end
   
   protected

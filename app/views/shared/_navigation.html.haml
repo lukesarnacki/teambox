@@ -24,6 +24,7 @@
           .el= link_to t('.time'), project_time_path(project), :class => 'time ajax'
         .el= link_to t('.pages'), project_pages_path(project), :class => 'pages ajax'
         .el= link_to t('.files'), project_uploads_path(project), :class => 'files ajax'
+        .el= link_to t('.nomadesk_files'), project_synced_files_path(project), :class => 'files ajax'
         - if can?(:update, project)
           .el= link_to t('.settings'), project_settings_path(project), :class => 'settings'
           .contained

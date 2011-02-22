@@ -142,6 +142,8 @@ Teambox::Application.routes.draw do
           get :resend
         end
       end
+      
+      resources :synced_files
 
       match 'activities(.:format)' => 'activities#show', :as => :activities, :method => :get
       match 'activities/:id/show_new(.:format)' => 'activities#show_new', :as => :show_new, :method => :get
