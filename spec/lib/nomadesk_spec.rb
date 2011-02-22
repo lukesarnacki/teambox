@@ -45,12 +45,24 @@ describe Nomadesk do
       items.second.is_folder?.should be_false
     end
     
+    it "should find a bucket given it's name when sent #find_bucket with the name" do
+      bucket = @nomadesk.find_bucket('nmsa120663')
+      bucket.name.should == "nmsa120663"
+      bucket.label.should == "Teambox-fs2"
+    end
+    
     it "should present a download link when sent #download link with a bucket and a path" do
       bucket = @nomadesk.buckets.first
-      item = @nomadesk.list(bucket).second # This is a file
+      item = @nomadesk.list(bucket).second # This is a file not dir
       
       expected = "https://secure005.nomadesk.com/nomadesk-storage/api.php?FileserverName=#{bucket.name}&Token=#{@nomadesk.token.key}&Task=FileDownload&Path=#{item.path}#{ERB::Util.url_encode(item.name)}"
       @nomadesk.download_url(bucket, item.full_path).should == expected
+    end
+    
+    it "should allow direct access to a download link from the item" do
+      bucket = @nomadesk.buckets.first
+      item = @nomadesk.list(bucket).second # This is a file not dir
+      item.download_url.should_not be_blank
     end
     
     # TODO: Add tests for all the methods that generate urls etc. At the moment these are basically just functional tests

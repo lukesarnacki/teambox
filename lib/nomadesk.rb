@@ -12,7 +12,7 @@ class Nomadesk
   
   class ResponseError < StandardError
     def initialize(res, message="")
-      super("Nomadesk::ResponseError: #{res.message} (#{res.status}) #{message}")
+      super("Nomadesk::ResponseError #{res.message} (#{res.status}) #{message}")
     end
   end
   
@@ -83,30 +83,34 @@ class Nomadesk
   end
   
   class Bucket
-    attr_accessor :name, :label, :api_url
+    attr_accessor :provider, :name, :label, :api_url
     
-    def initialize(name, label, storage_api_url)
+    def initialize(provider, name, label, storage_api_url)
+      @provider = provider
       @name = name
       @label = label
       @api_url = storage_api_url
     end
     
-    def self.list_from_hash(hash_list)
-      hash_list.map{|h| self.from_hash(h) }
+    def self.list_from_hash(provider, hash_list)
+      hash_list.map{|h| self.from_hash(provider, h) }
     end
     
-    def self.from_hash(hash)
-      Bucket.new(hash['Name'], hash['Label'], hash['StorageApiUrl'])
+    def self.from_hash(provider, hash)
+      Bucket.new(provider, hash['Name'], hash['Label'], hash['StorageApiUrl'])
     end
   end
   
   class Item
-    attr_accessor :name, :path, :type, :modified
+    attr_accessor :provider, :bucket, :name, :path, :type, :modified, :size
     
-    def initialize(name, path, type, modified)
+    def initialize(provider, bucket, name, path, type, size, modified)
+      @provider = provider
+      @bucket = bucket
       @name = name
       @path = path
       @type = type
+      @size = size
       @modified = modified
     end
     
@@ -118,15 +122,22 @@ class Nomadesk
       return "#{path}#{name}"
     end
     
-    def self.list_from_hash(hash_list)
-      hash_list.map{|h| self.from_hash(h) }
+    def download_url
+      @provider.download_url(@bucket, self.full_path)
     end
     
-    def self.from_hash(hash)
-      Item.new(
+    def self.list_from_hash(provider, bucket, hash_list)
+      hash_list.map{|h| self.from_hash(provider, bucket, h) }
+    end
+    
+    def self.from_hash(provider, bucket, hash)
+      item = Item.new(
+        provider,
+        bucket,
         hash['Name'],
         hash['Path'],
         hash['IsFolder'] == "true" ? 'folder' : hash['Type'],
+        hash['Size'].to_i,
         Time.at(hash['LastModifiedDstamp'].to_i)
       )
     end
@@ -152,17 +163,26 @@ class Nomadesk
   def buckets
     res = task("GetFileservers")
     list = arrayify(res['Fileservers']['Fileserver'])
-    Bucket.list_from_hash(list)
+    Bucket.list_from_hash(self, list)
+  end
+  
+  def find_bucket(name)
+    res = task('GetFileserverInfo', :params => {"FileserverName" => name})
+    Bucket.from_hash(self, res['Fileservers']['Fileserver'])
   end
   
   def list(bucket, path = '/')
+    raise ArgumentError.new("Bucket must be an instance of Bucket") unless bucket.is_a?(Bucket)
+    
     res = task('ls', :url => bucket.api_url, :params => {"FileserverName" => bucket.name, "Path" => path})
     list = arrayify(res['FileInfos']['FileInfo'])
-    Item.list_from_hash(list)
+    Item.list_from_hash(self, bucket, list)
   end
   alias_method :ls, :list
   
   def download_url(bucket, path)
+    raise ArgumentError.new("Bucket must be an instance of Bucket") unless bucket.is_a?(Bucket)
+    
     res = task_url('FileDownload', :url => bucket.api_url, :params => {"FileserverName" => bucket.name, "Path" => path})
   end
   
