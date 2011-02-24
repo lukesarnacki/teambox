@@ -46,6 +46,9 @@ class OrganizationsController < ApplicationController
 
   def appearance
   end
+  
+  def storage_options
+  end
 
   def update
     if @organization.update_attributes(params[:organization])

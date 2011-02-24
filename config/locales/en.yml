@@ -485,6 +485,7 @@ en:
       billing: Plans and Billing
       invoices: Invoices
       delete: Delete this organization...
+      storage_options: Storage Options
     edit:
       title: Settings for %{organization}
       there_are: "There are"
@@ -497,6 +498,9 @@ en:
     appearance:
       title: Appearance for %{organization}
       submit: Save changes
+    storage_options:
+      title: Storage options for %{organization}
+      create: Create Nomadesk Storage
     external_view:
       create_your_own_org_html: "However, you can <a href='%{link}'>create your own organization</a> for your projects."
       request_permission: "To access this organization, you must request permission to some of the administrators:"
@@ -1151,6 +1155,9 @@ en:
     index:
       title: Syncronized Files in %{project}
       new_file: New File
+    bucket_missing:
+      title: No Storage for this Organization
+      info: "There is no Nomadesk Fileserver associated with your account. Click <a href='%{url}'>here</a> to associate one."
     file:
       open: Open
       download: Download

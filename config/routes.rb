@@ -74,6 +74,7 @@ Teambox::Application.routes.draw do
         get :external_view
         get :delete
         get :appearance
+        get :storage_options
       end
       resources :memberships do
         member do
@@ -143,7 +144,11 @@ Teambox::Application.routes.draw do
         end
       end
       
-      resources :synced_files
+      resources :synced_files do
+        collection do
+          get :bucket_missing
+        end
+      end
 
       match 'activities(.:format)' => 'activities#show', :as => :activities, :method => :get
       match 'activities/:id/show_new(.:format)' => 'activities#show_new', :as => :show_new, :method => :get

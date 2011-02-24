@@ -1,0 +1,7 @@
+%h2= t('.title', :organization => @organization)
+
+- if can?(:admin, @organization)
+  = link_to t('.create'), ''
+
+- else
+  %p= t('organizations.you_are_not_admin')
