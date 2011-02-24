@@ -2,11 +2,18 @@ class Nomadesk
   class Token
     attr_accessor :key
     
-    def initialize(username, password)
-      res = Request.get!(:user => username, :pass => password, :params => { "Task" => "Logon" })
-      @key = res['Token']
-      
+    def initialize(key)
+      @key = key
       self
+    end
+    
+    def self.from_login(username, password, host = nil)
+      options = {:user => username, :pass => password, :params => { "Task" => "Logon" }}
+      options[:host] = host unless host.nil?
+      
+      res = Request.get!(options)
+      key = res['Token']
+      Token.new(key)
     end
   end
   
@@ -35,11 +42,23 @@ class Nomadesk
   end
   
   class Request
+    DEFAULT_HOST = 'secure.nomadesk.com'
+    
     def self.get(options)
       url = generate_request_url(options)
       puts url
-      xml = open(url).read
-      Response.new(xml)
+      
+      # xml = open(url).read
+      
+      uri = URI.parse(url)
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = uri.scheme == 'https'
+      # TODO: This is bad (some would say very bad) but we have to do it right now as the cert isn't valid !!!
+      http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+      request = Net::HTTP::Get.new(uri.request_uri)
+      response = http.request(request)
+      
+      Response.new(response.body)
     end
     
     def self.get!(options)
@@ -61,7 +80,7 @@ class Nomadesk
           base = options[:url]
         else
           options[:protocol] ||= "https"
-          options[:host]     ||= "secure.nomadesk.com"
+          options[:host]     ||= DEFAULT_HOST
           options[:path]     ||= "/nomadesk-ctrller/api.php"
           base = "#{options[:protocol]}://#{options[:host]}#{options[:path]}"
         end
@@ -73,7 +92,9 @@ class Nomadesk
         elsif options[:user] && (options[:pass] || options[:password])
           options[:params].merge!("Email" => options[:user], "Password" => options[:pass] || options[:password])
         else
-          raise ArgumentError.new("No authorization params were passed")
+          unless ['CreateAccount', 'SuspendAccount', 'DestroyAccount'].include?(options[:task])
+            raise ArgumentError.new("No authorization params were passed")
+          end
         end
 
         params = options[:params].collect { |k,v| "#{k}=#{v}" }.join("&")
@@ -102,20 +123,20 @@ class Nomadesk
   end
   
   class Item
-    attr_accessor :provider, :bucket, :name, :path, :type, :modified, :size
+    attr_accessor :provider, :bucket, :name, :path, :item_type, :modified, :size
     
-    def initialize(provider, bucket, name, path, type, size, modified)
+    def initialize(provider, bucket, name, path, item_type, size, modified)
       @provider = provider
       @bucket = bucket
       @name = name
       @path = path
-      @type = type
+      @item_type = item_type
       @size = size
       @modified = modified
     end
     
     def is_folder?
-      return type == 'folder'
+      return item_type == 'folder'
     end
     
     def full_path
@@ -155,21 +176,64 @@ class Nomadesk
     end
   end
   
+  PERMISSIONS = [:shared, :private]
+  
+  attr_accessor :host
+  
   def initialize(options)
     if options[:user] && (options[:pass] || options[:password])
       @user = options[:user]
       @pass = options[:pass] || options[:password]
+    elsif options[:token]
+      @token = Token.new(options[:token])
     else
-      raise ArgumentError.new("You must supply the :user and :pass parameters to Nomadesk")
+      raise ArgumentError.new("You must supply the :user and :pass or :token parameters to Nomadesk")
     end
+    
+    @host = options[:host]
+  end
+  
+  # Creates an account and returns a token. This can then be used to create an instance of Nomadesk if requried
+  def self.create_account(options)
+    required_fields = [:email, :password, :first_name, :last_name, :phone]
+    raise ArgumentError.new("Options must contain all required fields") unless required_fields.all?{|f| options.include?(f) }
+    raise ArgumentError.new("You should pass a host to create account") unless options[:host]
+    
+    res = request('CreateAccount', :host => options.delete(:host), :params => format_keys(options))
+    Token.new(res['Token'])
+  end
+  
+  # This method is a reserved method and can only be used from an allowed IP
+  def self.suspend_account(email, host)
+    warn "Suspending account #{email} this can only be used from an allowed IP"
+    res = request('SuspendAccount', :host => host, :params => {'Email' => email})
+    return true
+  end
+  
+  # This method is a reserved method and can only be used from an allowed IP
+  def self.destroy_account(email, host)
+    warn "Destroying account #{email} this can only be used from an allowed IP"
+    res = request('DestroyAccount', :host => host, :params => {'Email' => email})
+    return true
   end
   
   def token
     if @token
       @token
     else
-      @token = Token.new(@user, @pass)
+      @token = Token.from_login(@user, @pass, @host)
     end
+  end
+  
+  def change_password(old_password, new_password)
+    res = task("ChangePassword", :params => {'OldPassword' => old_password, 'NewPassword' => new_password})
+    return true
+  end
+  
+  # skip confirm is only availible on some systems
+  def change_email(email, skip_confirm = false)
+    res = task("StartChangeEmailAddress", :params => {'Email' => email, 'SkipConfirm' => skip_confirm.to_s})
+    return true
   end
   
   def buckets
@@ -178,9 +242,14 @@ class Nomadesk
     Bucket.list_from_hash(self, list)
   end
   
-  def find_bucket(name)
+  def get_bucket(name)
     res = task('GetFileserverInfo', :params => {"FileserverName" => name})
     Bucket.from_hash(self, res['Fileservers']['Fileserver'])
+  end
+  
+  def find_bucket(label)
+    res = task('SearchFileserver', :params => {'Label' => label, 'Name' => ''})
+    puts res
   end
   
   def list(bucket, path = '/')
@@ -214,6 +283,39 @@ class Nomadesk
     res = task_url('rm', :url => bucket.api_url, :params => {"FileserverName" => bucket.name, "Path" => path})
   end
   
+  def delete(bucket, path)
+    res = task('rm', :url => bucket.api_url, :params => {"FileserverName" => bucket.name, "Path" => path})
+    return true
+  end
+  
+  def create_bucket(label, permissions = :shared, read_only = nil)
+    raise ArgumentError.new("Permissions must be #{PERMISSIONS.join(' or ')}") unless PERMISSIONS.include?(permissions)
+    raise ArgumentError.new("Label #{label} is not valid") unless label =~ /^[a-zA-Z0-9-]+$/i
+    
+    params =  {'FileserverLabel' => label, 'Type' => get_type_from_permission(permissions)}
+    params['ReadOnly'] = read_only unless read_only.nil?
+    
+    res = task('CreateFileserver', :params => params)
+    Bucket.from_hash(self, res['Fileservers']['Fileserver'])
+  end
+  
+  def delete_bucket(bucket)
+    delete_bucket_by_name(bucket.name)
+  end
+  
+  def delete_bucket_by_name(name)
+    res = task('RemoveFileserver', :params => {'FileserverName' => name})
+    return true
+  end
+  
+  # This is a private API call only useful for testing
+  def destroy_bucket(name)
+    raise NotImplementedException.new("DestroyFileserver isn't implemented yet as it's a private API method")
+    warn "Destroying bucket #{name} this can only be used from an allowed IP"
+    res = task('DestroyFileserver', :params => {'FileserverName' => name} )
+    return true
+  end
+  
   protected
     def arrayify(object)
       case object
@@ -225,10 +327,32 @@ class Nomadesk
     end
     
     def task_url(task, options)
-      Request.url_for({:task => task, :token => token}.merge(options))
+      Request.url_for({:host => @host, :task => task, :token => token}.merge(options))
     end
     
     def task(task, options = {})
-      res = Request.get!({:task => task, :token => token}.merge(options))
+      res = Request.get!({:host => @host, :task => task, :token => token}.merge(options))
+    end
+    
+    def self.request(task, options)
+      res = Request.get!({:task => task}.merge(options))
+    end
+    
+    def self.format_keys(hash)
+      hash.inject({}) do |h, (key, value)|
+        h[key.to_s.camelize] = value
+        h
+      end
+    end
+    
+    def get_type_from_permission(permission)
+      case permission
+      when :shared
+        'Team Fileserver'
+      when :private
+        'Personal Fileserver'
+      else
+        raise ArgumentError.new("Unknown permission #{permission}")
+      end
     end
 end
