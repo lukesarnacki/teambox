@@ -1,3 +1,5 @@
+*.swp
+*.swo
 .empty
 .DS_Store
 .idea

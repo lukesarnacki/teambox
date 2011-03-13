@@ -3,7 +3,7 @@ class MigrateParanoidFields < ActiveRecord::Migration
     %w(activities comments conversations dividers google_docs invitations notes organizations pages people projects task_lists tasks teambox_datas uploads users).each do |table|
       add_column table, :deleted, :boolean
       add_index table, [:deleted]
-      table.singularize.camelize.constantize.update_all ["deleted = ?", true], "deleted_at IS NOT NULL"
+      table.singularize.camelize.constantize.find_by_sql("UPDATE #{table} SET deleted = 't' WHERE (deleted_at IS NOT NULL)")
       remove_column table, :deleted_at
     end
   end
