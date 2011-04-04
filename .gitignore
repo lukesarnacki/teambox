@@ -22,8 +22,11 @@ public/logos
 public/jammit/*
 public/stylesheets
 public/sprockets.js
+public/sprockets
 /uploads
 webrat-*
 capybara-*
 rerun.txt
 teambox2
+config/teambox.yml
+vendor/bundle

@@ -60,6 +60,13 @@ Teambox::Application.configure do
   #RAILS 3 -  When using url_helpers in Mailers you now need to set host in the default url_options
   config.action_mailer.default_url_options = {:host => Teambox.config.app_domain}
 
+config.action_mailer.delivery_method = :sendmail
+ActionMailer::Base.sendmail_settings = {
+  :location       => '/usr/sbin/sendmail',
+  :arguments      => '-i -t'
+}
+
+
   # Enable threaded mode
   # config.threadsafe!
 
