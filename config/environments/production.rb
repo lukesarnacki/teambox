@@ -25,7 +25,7 @@ Teambox::Application.configure do
   # end
 
   # Specifies the header that your server uses for sending files, Apache version
-  # config.action_dispatch.x_sendfile_header = "X-Sendfile"
+  config.action_dispatch.x_sendfile_header = "X-Sendfile"
 
   # For nginx:
   # config.action_dispatch.x_sendfile_header = 'X-Accel-Redirect'
