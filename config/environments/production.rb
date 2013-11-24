@@ -24,11 +24,13 @@ Teambox::Application.configure do
   #   config.cache_store = :file_store, Rails.root + "tmp/cache"
   # end
 
-  # Specifies the header that your server uses for sending files
-  config.action_dispatch.x_sendfile_header = "X-Sendfile"
+  # Specifies the header that your server uses for sending files, Apache version
+  # config.action_dispatch.x_sendfile_header = "X-Sendfile"
 
   # For nginx:
   # config.action_dispatch.x_sendfile_header = 'X-Accel-Redirect'
+  #
+  # See this gist (https://gist.github.com/559824d94db103d284b0) for how to configure nginx correctly.
 
   # If you have no front-end server that supports something like X-Sendfile,
   # just comment this out and Rails will serve the files
